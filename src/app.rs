@@ -67,6 +67,10 @@ impl App {
     cc.egui_ctx
       .memory_mut(|mem| mem.options.theme_preference = ThemePreference::Dark);
 
+    cc.egui_ctx.style_mut(|style| {
+      style.visuals.hyperlink_color = style.visuals.weak_text_color();
+    });
+
     Self { state: State::default() }
   }
 

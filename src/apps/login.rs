@@ -5,14 +5,14 @@ use {
     repr::login::Tokens,
     widgets::{self, ErrorHeader},
   },
-  egui::{Id, RichText, TextEdit},
+  egui::{Align, Id, Layout, Link, RichText, TextEdit},
 };
 
 #[derive(Clone)]
 pub struct Account {
-  pub name: String,
   pub access: String,
-  pub refresh: String,
+  pub name: Option<String>,
+  pub refresh: Option<String>,
 }
 
 #[derive(Default)]
@@ -30,12 +30,7 @@ impl Login {
   }
 
   pub fn ui(&mut self, ui: &mut egui::Ui) -> Option<Account> {
-    ui.horizontal(|ui| {
-      ui.add_sized(
-        ui.available_size(),
-        TextEdit::singleline(&mut self.login).hint_text("login"),
-      );
-    });
+    horizontal_input(ui, &mut self.login, "login");
 
     ui.horizontal(|ui| {
       ui.add(widgets::password(&mut self.password));
@@ -45,7 +40,11 @@ impl Login {
       if let Ok((tokens, name)) = arx.try_recv() {
         match tokens {
           Ok(Tokens { access, refresh }) => {
-            return Some(Account { name, access, refresh });
+            return Some(Account {
+              access,
+              name: Some(name),
+              refresh: Some(refresh),
+            });
           }
           Err(error) => self.errors.push(error),
         }
@@ -74,8 +73,34 @@ impl Login {
 }
 
 #[derive(Default)]
-pub struct AccountPanel {
-  pub login: Login,
+pub struct Token {
+  token: String,
+}
+
+impl Token {
+  pub fn ui(&mut self, ui: &mut egui::Ui) -> Option<Account> {
+    horizontal_input(ui, &mut self.token, "token");
+
+    ui.vertical_centered(|ui| {
+      if ui.button("login").clicked() {
+        Some(Account { access: self.token.clone(), name: None, refresh: None })
+      } else {
+        None
+      }
+    })
+    .inner
+  }
+}
+
+pub enum AccountPanel {
+  Login(Login),
+  Token(Token),
+}
+
+impl Default for AccountPanel {
+  fn default() -> Self {
+    Self::Login(Login::new())
+  }
 }
 
 impl AccountPanel {
@@ -85,26 +110,67 @@ impl AccountPanel {
 
   pub fn ui(&mut self, ui: &mut egui::Ui) {
     if let Some(Account { name, access, refresh }) = self.account(ui) {
-      ui.heading("username");
-      ui.label(name);
-      ui.separator();
+      if let Some(name) = name {
+        ui.heading("username");
+        ui.label(name);
+        ui.separator();
+      }
 
       ui.collapsing(RichText::new("access").heading(), |ui| {
         ui.label(access);
       });
       ui.separator();
 
-      ui.heading("refresh");
-      ui.label(refresh);
-      ui.separator();
+      if let Some(refresh) = refresh {
+        ui.heading("refresh");
+        ui.label(refresh);
+        ui.separator();
+      }
 
       ui.vertical_centered(|ui| {
         if ui.button("logout").clicked() {
           ui.memory_mut(|mem| mem.data.remove_by_type::<Account>())
         }
       });
-    } else if let Some(account) = self.login.ui(ui) {
-      ui.memory_mut(|mem| mem.data.insert_temp(Id::NULL, account));
+    } else {
+      let (account, link, panel) = match self {
+        AccountPanel::Login(login) => (
+          login.ui(ui),
+          "sign in with token",
+          AccountPanel::Token(Token::default()),
+        ),
+        AccountPanel::Token(token) => (
+          token.ui(ui),
+          "sign in with password",
+          AccountPanel::Login(Login::default()),
+        ),
+      };
+
+      ui.with_layout(Layout::top_down(Align::Max), |ui| {
+        ui.horizontal(|ui| {
+          horizontal_link(ui, link, || *self = panel);
+          horizontal_link(ui, "sign up", || todo!());
+        })
+      });
+
+      if let Some(account) = account {
+        ui.memory_mut(|mem| mem.data.insert_temp(Id::NULL, account));
+      }
     }
   }
+}
+
+fn horizontal_link(ui: &mut egui::Ui, label: &str, clicked: impl FnOnce()) {
+  if ui.add(Link::new(label)).clicked() {
+    clicked();
+  }
+}
+
+fn horizontal_input(ui: &mut egui::Ui, input: &mut String, hint: &str) {
+  ui.horizontal(|ui| {
+    ui.add_sized(
+      ui.available_size(),
+      TextEdit::singleline(input).hint_text(hint),
+    );
+  });
 }
