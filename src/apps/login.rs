@@ -6,6 +6,7 @@ use {
     widgets::{self, ErrorHeader},
   },
   egui::{Align, Id, Layout, Link, RichText, TextEdit},
+  egui_toast::{Toast, ToastKind, ToastOptions, ToastStyle, Toasts},
 };
 
 #[derive(Clone)]
@@ -92,15 +93,21 @@ impl Token {
   }
 }
 
-pub enum AccountPanel {
+pub enum Panel {
   Login(Login),
   Token(Token),
 }
 
-impl Default for AccountPanel {
+impl Default for Panel {
   fn default() -> Self {
     Self::Login(Login::new())
   }
+}
+
+#[derive(Default)]
+pub struct AccountPanel {
+  panel: Panel,
+  toasts: Toasts,
 }
 
 impl AccountPanel {
@@ -133,29 +140,36 @@ impl AccountPanel {
         }
       });
     } else {
-      let (account, link, panel) = match self {
-        AccountPanel::Login(login) => (
-          login.ui(ui),
-          "sign in with token",
-          AccountPanel::Token(Token::default()),
-        ),
-        AccountPanel::Token(token) => (
+      let (account, link, panel) = match &mut self.panel {
+        Panel::Login(login) => {
+          (login.ui(ui), "sign in with token", Panel::Token(Token::default()))
+        }
+        Panel::Token(token) => (
           token.ui(ui),
           "sign in with password",
-          AccountPanel::Login(Login::default()),
+          Panel::Login(Login::default()),
         ),
       };
 
       ui.with_layout(Layout::top_down(Align::Max), |ui| {
         ui.horizontal(|ui| {
-          horizontal_link(ui, link, || *self = panel);
-          horizontal_link(ui, "sign up", || todo!());
+          horizontal_link(ui, link, || self.panel = panel);
+          horizontal_link(ui, "sign up", || {
+            self.toasts.add(Toast {
+              kind: ToastKind::Error,
+              text: "Error".into(),
+              options: ToastOptions::default(),
+              style: ToastStyle::default(),
+            });
+          });
         })
       });
 
       if let Some(account) = account {
         ui.memory_mut(|mem| mem.data.insert_temp(Id::NULL, account));
       }
+
+      self.toasts.show(ui.ctx());
     }
   }
 }

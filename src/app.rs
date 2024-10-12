@@ -5,6 +5,7 @@ use {
     Context, Key, Modifiers, RichText, SidePanel, ThemePreference,
     TopBottomPanel, Visuals, Window, widgets,
   },
+  egui_toast::Toasts,
   std::fmt,
 };
 
