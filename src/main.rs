@@ -1,6 +1,4 @@
-#![feature(let_chains)]
-#![feature(array_chunks)]
-#![feature(slice_as_chunks)]
+#![feature(let_chains, array_chunks, slice_as_chunks, iter_intersperse)]
 #![deny(clippy::all)]
 #![forbid(unsafe_code)] // Who left this here???
 #![allow(irrefutable_let_patterns)]
@@ -38,9 +36,5 @@ async fn main() -> eframe::Result {
 
     ..Default::default()
   };
-  eframe::run_native(
-    "rain",
-    options,
-    Box::new(|cc| Ok(Box::new(App::new(cc)))),
-  )
+  eframe::run_native("rain", options, Box::new(|cc| Ok(Box::new(App::new(cc)))))
 }

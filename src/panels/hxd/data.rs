@@ -164,6 +164,11 @@ impl BetweenFrameData {
     };
   }
 
+  pub fn set_force_highlight_address(&mut self, new_address: Address) {
+    self.goto_address_string = format!("{:X}", new_address);
+    self.goto_address_line = Some(new_address);
+  }
+
   pub fn set_selected_edit_address(
     &mut self,
     new_address: Option<Address>,

@@ -14,6 +14,7 @@ impl MemoryEditor {
     ui: &mut Ui,
     mem: &mut T,
     read: &mut impl FnMut(&mut T, Address) -> Option<u8>,
+    on_save: Option<&mut impl FnMut(Address)>,
   ) {
     let current_address_range = self
       .address_ranges
@@ -24,7 +25,7 @@ impl MemoryEditor {
     egui::CollapsingHeader::new("🛠 Options")
       .default_open(!self.options.is_options_collapsed)
       .show(ui, |ui| {
-        self.draw_main_options(ui, &current_address_range);
+        self.draw_main_options(ui, &current_address_range, on_save);
 
         self.draw_data_preview(ui, &current_address_range, mem, read);
       });
@@ -35,6 +36,7 @@ impl MemoryEditor {
     &mut self,
     ui: &mut Ui,
     current_address_range: &Range<Address>,
+    on_save: Option<&mut impl FnMut(Address)>,
   ) {
     egui::Grid::new("options_grid").show(ui, |ui| {
       // Memory region selection
@@ -96,9 +98,9 @@ impl MemoryEditor {
       // For some reason egui is triggering response.clicked() when we press enter at the moment
       // (didn't used to do this).
       // The additional check for not having enter pressed will need to stay until that is fixed.
-      if response.clicked() && !ui.input(|i| i.key_pressed(egui::Key::Enter)) {
-        self.frame_data.goto_address_string.clear();
-      }
+      // if response.clicked() && !ui.input(|i| i.key_pressed(egui::Key::Enter)) {
+      //   self.frame_data.goto_address_string.clear();
+      // }
 
       // If we pressed enter, move to the address
       if response.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter))
@@ -156,6 +158,16 @@ impl MemoryEditor {
       ui.checkbox(show_zero_colour, "Custom zero colour").on_hover_text(
         "If enabled memory values of '0x00' will be coloured differently",
       );
+
+      if ui
+        .button("Save pc")
+        .on_hover_text("Store current value into current program counter")
+        .clicked()
+        && let Some(on_save) = on_save
+        && let Some(pc) = self.frame_data.goto_address_line
+      {
+        on_save(pc);
+      }
     });
   }
 
@@ -257,6 +269,6 @@ impl MemoryEditor {
       })
       .collect::<Vec<u8>>();
 
-    super::utils::slice_to_decimal_string(data_preview, &bytes)
+    super::utils::bytes_to_hex(data_preview, &bytes)
   }
 }

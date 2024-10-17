@@ -2728,6 +2728,7 @@ dependencies = [
  "egui_extras",
  "ehttp",
  "lazy_static",
+ "raki",
  "reqwest",
  "serde",
  "serde_json",
@@ -2735,6 +2736,12 @@ dependencies = [
  "tokio",
  "tracing",
 ]
+
+[[package]]
+name = "raki"
+version = "1.1.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "43703d087402dcfea145054f5d173b5fbaab3ac0f085c197b7e677f43f591305"
 
 [[package]]
 name = "rand"

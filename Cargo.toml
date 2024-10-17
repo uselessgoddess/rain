@@ -17,6 +17,9 @@ reqwest = { version = "0.12", features = ["json"] }
 concurrent-queue = { version = "2.5" }
 ehttp = { version = "0.5", features = ["json", "native-async"] }
 
+# Riscv
+raki = { version = "1.0" }
+
 # Utils
 tracing = { version = "0.1" }
 lazy_static = { version = "1.5" }

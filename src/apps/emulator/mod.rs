@@ -1,5 +1,8 @@
+mod asm;
+
 use {
   crate::{panels::MemoryEditor, widgets::HexEdit},
+  asm::Asm,
   egui::{
     Button, Color32, Context, Key, KeyboardShortcut, Modifiers, RichText,
     Window,
@@ -10,10 +13,18 @@ use {
 };
 
 #[derive(Default)]
+struct State {
+  pc: u64,
+  memory: Vec<u8>,
+}
+
+#[derive(Default)]
 pub struct EmulatorPanel {
   xregs: Xregs,
   dram: Memory,
+  asm: Asm,
 
+  state: State,
   dialog: FileDialog,
 }
 
@@ -25,7 +36,10 @@ impl EmulatorPanel {
       });
     });
 
-    self.dram.ui(ctx);
+    self.dram.ui(ctx, &mut self.state);
+    if let Some(pc) = self.asm.ui(ctx) {
+      self.dram.editor.frame_data.set_highlight_address(pc);
+    }
     Window::new("Registers")
       .collapsible(false)
       .fixed_size([370.0, 400.0])
@@ -37,10 +51,17 @@ impl EmulatorPanel {
 
     if let Some(path) = self.dialog.take_selected() {
       match fs::read(path) {
-        Ok(bytes) => self.dram.memory = bytes,
+        Ok(bytes) => {
+          self.asm.decode(&bytes);
+          self.state.memory = bytes;
+        }
         Err(err) => {}
       }
     }
+
+    self.dram.if_changed(|| {
+      self.asm.decode(&self.state.memory);
+    })
   }
 
   fn file_menu_button(&mut self, ui: &mut egui::Ui) {
@@ -68,13 +89,18 @@ impl EmulatorPanel {
       if ui.add(button).clicked() {
         self.dialog.select_file();
       }
+
+      let button = Button::new("Toggle Asm");
+      if ui.add(button).clicked() {
+        self.asm.open = !self.asm.open;
+      }
     });
   }
 }
 
 pub struct Memory {
   editor: MemoryEditor,
-  memory: Vec<u8>,
+  changed: bool,
 }
 
 impl Default for Memory {
@@ -84,20 +110,31 @@ impl Default for Memory {
       .with_address_range("Boot", 0xFF00..0xFF80)
       .with_window_title("Memory");
 
-    Self { editor, memory: vec![123; 1024] }
+    Self { editor, changed: false }
   }
 }
 
 impl Memory {
-  pub fn ui(&mut self, ctx: &Context) {
+  pub fn if_changed(&mut self, f: impl FnOnce()) {
+    if self.changed {
+      self.changed = false;
+      f();
+    }
+  }
+
+  pub fn ui(&mut self, ctx: &Context, state: &mut State) {
     self.editor.window_ui(
       ctx,
-      &mut self.memory,
+      &mut state.memory,
       |mem, addr| mem.get(addr).copied(),
       |mem, addr, val| {
+        self.changed = true;
         if addr < mem.len() {
           mem[addr] = val
         }
+      },
+      |pc| {
+        state.pc = pc as u64;
       },
     );
   }

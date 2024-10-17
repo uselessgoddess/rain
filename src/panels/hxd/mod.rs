@@ -30,7 +30,7 @@ pub struct MemoryEditor {
   /// Can optionally be serialized/deserialized with `serde`
   pub options: MemoryEditorOptions,
   /// Data for layout between frames, rather hacky.
-  frame_data: BetweenFrameData,
+  pub(crate) frame_data: BetweenFrameData,
   /// The visible range of addresses from the last frame.
   visible_range: Range<Address>,
 }
@@ -89,7 +89,8 @@ impl MemoryEditor {
     // This needs to exist due to the fact we want to use generics, and `Option` needs to know the size of its contents.
     type DummyWriteFunction<T> = fn(&mut T, Address, u8);
 
-    self.window_ui_impl(ctx, mem, read_fn, None::<DummyWriteFunction<T>>);
+    // self.window_ui_impl(ctx, mem, read_fn, None::<DummyWriteFunction<T>>);
+    todo!()
   }
 
   /// Create a window and render the memory editor contents within.
@@ -111,8 +112,9 @@ impl MemoryEditor {
     mem: &mut T,
     read_fn: impl FnMut(&mut T, Address) -> Option<u8>,
     write_fn: impl FnMut(&mut T, Address, u8),
+    on_save_fn: impl FnMut(Address),
   ) {
-    self.window_ui_impl(ctx, mem, read_fn, Some(write_fn));
+    self.window_ui_impl(ctx, mem, read_fn, Some(write_fn), Some(on_save_fn));
   }
 
   fn window_ui_impl<T: ?Sized>(
@@ -121,6 +123,7 @@ impl MemoryEditor {
     mem: &mut T,
     read_fn: impl FnMut(&mut T, Address) -> Option<u8>,
     write_fn: Option<impl FnMut(&mut T, Address, u8)>,
+    on_save_fn: Option<impl FnMut(Address)>,
   ) {
     Window::new(self.window_name.clone())
       .hscroll(false)
@@ -128,7 +131,7 @@ impl MemoryEditor {
       .resizable(true)
       .show(ctx, |ui| {
         self.shrink_window_ui(ui);
-        self.draw_editor_contents_impl(ui, mem, read_fn, write_fn);
+        self.draw_editor_contents_impl(ui, mem, read_fn, write_fn, on_save_fn);
       });
   }
 
@@ -148,12 +151,13 @@ impl MemoryEditor {
     // This needs to exist due to the fact we want to use generics, and `Option` needs to know the size of its contents.
     type DummyWriteFunction<T> = fn(&mut T, Address, u8);
 
-    self.draw_editor_contents_impl(
-      ui,
-      mem,
-      read_fn,
-      None::<DummyWriteFunction<T>>,
-    );
+    // self.draw_editor_contents_impl(
+    //   ui,
+    //   mem,
+    //   read_fn,
+    //   None::<DummyWriteFunction<T>>,
+    // );
+    todo!()
   }
 
   /// Draws the actual memory viewer/editor.
@@ -169,8 +173,15 @@ impl MemoryEditor {
     mem: &mut T,
     read_fn: impl FnMut(&mut T, Address) -> Option<u8>,
     write_fn: impl FnMut(&mut T, Address, u8),
+    on_save_fn: impl FnMut(Address),
   ) {
-    self.draw_editor_contents_impl(ui, mem, read_fn, Some(write_fn));
+    self.draw_editor_contents_impl(
+      ui,
+      mem,
+      read_fn,
+      Some(write_fn),
+      Some(on_save_fn),
+    );
   }
 
   fn draw_editor_contents_impl<T: ?Sized>(
@@ -179,13 +190,14 @@ impl MemoryEditor {
     mem: &mut T,
     mut read_fn: impl FnMut(&mut T, Address) -> Option<u8>,
     mut write_fn: Option<impl FnMut(&mut T, Address, u8)>,
+    mut on_save_fn: Option<impl FnMut(Address)>,
   ) {
     assert!(
       !self.address_ranges.is_empty(),
       "At least one address range needs to be added to render the contents!"
     );
 
-    self.draw_options_area(ui, mem, &mut read_fn);
+    self.draw_options_area(ui, mem, &mut read_fn, on_save_fn.as_mut());
 
     ui.separator();
 
@@ -244,7 +256,9 @@ impl MemoryEditor {
                             .color(if highlight_in_range { highlight_text_colour } else { address_text_colour })
                             .text_style(memory_editor_address_text_style.clone());
 
-                        ui.label(start_text);
+                        if ui.label(start_text).clicked() {
+                            self.frame_data.set_highlight_address(start_address);
+                        }
 
                         self.draw_memory_values(ui, mem, &mut read_fn, &mut write_fn, start_address, &address_space);
 
