@@ -235,7 +235,7 @@ impl MemoryEditor {
             );
             ui.label(format!("Value at {:#X} (decimal): ", address))
               .on_hover_text(hover_text);
-            ui.label(value);
+            ui.label(format!("0x{value}"));
           } else {
             ui.label("Value (decimal): ").on_hover_text(hover_text);
             ui.label("None");

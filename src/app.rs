@@ -1,11 +1,14 @@
 use {
-  crate::{emulator::EmulatorPanel, login::AccountPanel, panels::SystemPanel},
+  crate::{
+    emulator::SessionPanel,
+    login::{Account, AccountPanel},
+    panels::SystemPanel,
+  },
   eframe::{CreationContext, Frame},
   egui::{
-    Context, Key, Modifiers, RichText, SidePanel, ThemePreference,
-    TopBottomPanel, Visuals, Window, widgets,
+    widgets, Context, Id, Key, Modifiers, RichText, SidePanel, ThemePreference,
+    TopBottomPanel, Visuals, Window,
   },
-  egui_toast::Toasts,
   std::fmt,
 };
 
@@ -41,9 +44,10 @@ impl eframe::App for AccountPanel {
       .show(ctx, |ui| self.ui(ui));
   }
 }
-impl eframe::App for EmulatorPanel {
+impl eframe::App for SessionPanel {
   fn update(&mut self, ctx: &Context, _: &mut Frame) {
-    self.ui(ctx);
+    let account = ctx.memory(|mem| mem.data.get_temp::<Account>(Id::NULL));
+    self.ui(ctx, account.unwrap());
   }
 }
 
@@ -53,7 +57,7 @@ pub struct State {
   anchor: Anchor,
 
   account: AccountPanel,
-  emulator: EmulatorPanel,
+  emulator: SessionPanel,
 }
 
 pub struct App {

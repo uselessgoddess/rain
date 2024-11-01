@@ -13,7 +13,10 @@ mod utils;
 mod widgets;
 
 use {
-  crate::{app::App, tx::TyCtx},
+  crate::{
+    app::App,
+    tx::{Tx, TyCtx},
+  },
   eframe::egui,
   lazy_static::lazy_static,
   std::sync::Arc,
@@ -23,6 +26,10 @@ pub use {apps::*, utils::Arx};
 
 lazy_static! {
   pub static ref CONTEXT: Arc<TyCtx> = Arc::new(TyCtx::new());
+}
+
+pub fn tx() -> Tx {
+  CONTEXT.clone()
 }
 
 #[tokio::main]
